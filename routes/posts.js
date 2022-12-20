@@ -1,9 +1,7 @@
 const express = require("express");
-const mongoose = require("mongoose");
 const hashUtil = require("../utils/hash");
-const { Post } = require("../schemas");
 const router = express.Router();
-const { ObjectId } = mongoose.mongo;
+const db = require("../models");
 
 /**
  * 게시글 조회 API
@@ -12,16 +10,8 @@ const { ObjectId } = mongoose.mongo;
 router.get("/:postId", async (req, res) => {
   try {
     const { postId } = req.params;
-    if (!ObjectId.isValid(postId)) {
-      return res.status(400).json({
-        success: false,
-        message: "postId는 ObjectId여야합니다.",
-      });
-    }
-    const result = await Post.findById(postId)
-      .select("-password")
-      .sort({ createdAt: -1 })
-      .lean();
+
+    const result = await db.Post.findByPk(postId);
     res.status(200).json(result);
   } catch (e) {
     console.log(e);
@@ -38,10 +28,9 @@ router.get("/:postId", async (req, res) => {
  */
 router.get("/", async (req, res) => {
   try {
-    const result = await Post.find()
-      .sort("-createdAt")
-      .select("-password")
-      .lean();
+    const result = await db.Post.findAll({
+      order: [["createdAt", "DESC"]],
+    });
     res.status(200).json(result);
   } catch (e) {
     console.log(e);
@@ -56,47 +45,22 @@ router.get("/", async (req, res) => {
  * - 제목, 작성자명, 비밀번호, 작성 내용을 입력하기
  */
 router.post("/", async (req, res) => {
+  console.log("ww");
   try {
+    console.log("ww");
     const { title, author, password, content } = req.body;
-    let validationError = [];
-    if (!title) {
-      validationError.push("제목은 반드시 입력해야합니다.");
-    } else if (title.length > 50) {
-      validationError.push("제목은 50자 이내로 입력해야합니다.");
-    }
-    if (!author) {
-      validationError.push("작성자명은 반드시 입력해야합니다.");
-    } else if (author.length > 20) {
-      validationError.push("작성자명은 20자 이내로 입력해야합니다.");
-    }
-    if (!password) {
-      validationError.push("비밀번호는 반드시 입력해야합니다.");
-    } else if (password.length >= 8) {
-      validationError.push("비밀번호는 반드시 8글자 이상으로 입력해야합니다.");
-    } else if (!/^[0-9a-zA-Z!@#$%^+\-=]*$/.test(password)) {
-      validationError.push(
-        "비밀번호는 영문, 숫자, 특수문자(!@#$^+-=만 입력 가능합니다."
-      );
-    }
-    if (!content) {
-      validationError.push("글 내용은 반드시 입력해야합니다.");
-    } else if (content.length > 100000) {
-      validationError.push("글 내용은 10만자를 넘길 수 없습니다.");
-    }
-    if (validationError.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: validationError,
-      });
-    }
+
     const passwordHash = await hashUtil.hashPassword(password);
-    const post = new Post({
+    await db.Post.create({
       title: title,
       author: author,
       password: passwordHash,
       content: content,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      likes: 0,
+      userId: 1,
     });
-    await post.save();
     return res.status(200).json({
       success: true,
       message: "게시글을 작성했습니다.",
@@ -116,41 +80,15 @@ router.post("/", async (req, res) => {
 router.put("/:postId", async (req, res) => {
   try {
     const { postId } = req.params;
-    if (!ObjectId.isValid(postId)) {
-      return res.status(400).json({
-        success: false,
-        message: "postId는 ObjectId여야합니다.",
-      });
-    }
     const { title, author, password, content } = req.body;
-    let validationError = [];
-    if (!password) {
-      validationError.push("비밀번호는 반드시 입력해야합니다.");
-    } else if (password.length >= 8) {
-      validationError.push("비밀번호는 반드시 8글자 이상으로 입력해야합니다.");
-    } else if (!/^[0-9a-zA-Z!@#$%^+\-=]*$/.test(password)) {
-      validationError.push(
-        "비밀번호는 영문, 숫자, 특수문자(!@#$^+-=만 입력 가능합니다."
-      );
-    }
-    if (!content) {
-      validationError.push("글 내용은 반드시 입력해야합니다.");
-    } else if (content.length > 100000) {
-      validationError.push("글 내용은 10만자를 넘길 수 없습니다.");
-    }
-    if (validationError.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: validationError,
-      });
-    }
+
     if (!password) {
       return res.status(400).json({
         success: false,
         message: "비밀번호 입력이 필요합니다.",
       });
     }
-    const post = await Post.findById(postId).lean();
+    const post = await db.Post.findByPk(postId);
     if (!post) {
       return res.status(404).json({
         success: false,
@@ -163,13 +101,12 @@ router.put("/:postId", async (req, res) => {
         message: "패스워드가 일치하지 않습니다.",
       });
     }
-    await Post.findByIdAndUpdate(postId, {
-      $set: {
-        title: title || post.title,
-        author: author || post.author,
-        content: content,
-      },
-    }).lean();
+    await post.update({
+      title: title || post.title,
+      author: author || post.author,
+      content: content,
+    });
+    await post.save();
     return res.status(200).json({
       success: true,
       message: "게시글을 업데이트했습니다.",
@@ -189,13 +126,8 @@ router.put("/:postId", async (req, res) => {
 router.post("/delete/:postId", async (req, res) => {
   try {
     const { postId } = req.params;
-    if (!ObjectId.isValid(postId)) {
-      return res.status(400).json({
-        success: false,
-        message: "postId는 ObjectId여야합니다.",
-      });
-    }
-    const post = await Post.findById(postId).lean();
+
+    const post = await db.Post.findByPk(postId);
     if (!post) {
       return res.status(404).json({
         success: false,
@@ -203,29 +135,15 @@ router.post("/delete/:postId", async (req, res) => {
       });
     }
     const { password } = req.body;
-    let validationError = [];
-    if (!password) {
-      validationError.push("비밀번호는 반드시 입력해야합니다.");
-    } else if (password.length >= 8) {
-      validationError.push("비밀번호는 반드시 8글자 이상으로 입력해야합니다.");
-    } else if (!/^[0-9a-zA-Z!@#$%^+\-=]*$/.test(password)) {
-      validationError.push(
-        "비밀번호는 영문, 숫자, 특수문자(!@#$^+-=만 입력 가능합니다."
-      );
-    }
-    if (validationError.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: validationError,
-      });
-    }
+
     if (!(await hashUtil.comparePassword(password, post.password))) {
       return res.status(401).json({
         success: false,
         message: "패스워드가 일치하지 않습니다.",
       });
     }
-    await Post.findByIdAndDelete(postId).lean();
+    await post.destroy();
+    await post.save();
     return res.status(200).json({
       success: true,
       message: "게시글을 삭제했습니다.",
