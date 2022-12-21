@@ -48,12 +48,11 @@ router.post("/", async (req, res) => {
   console.log("ww");
   try {
     console.log("ww");
-    const { title, author, password, content } = req.body;
+    const { title, password, content } = req.body;
 
     const passwordHash = await hashUtil.hashPassword(password);
     await db.Post.create({
       title: title,
-      author: author,
       password: passwordHash,
       content: content,
       createdAt: new Date(),
@@ -80,14 +79,8 @@ router.post("/", async (req, res) => {
 router.put("/:postId", async (req, res) => {
   try {
     const { postId } = req.params;
-    const { title, author, password, content } = req.body;
+    const { title, content } = req.body;
 
-    if (!password) {
-      return res.status(400).json({
-        success: false,
-        message: "비밀번호 입력이 필요합니다.",
-      });
-    }
     const post = await db.Post.findByPk(postId);
     if (!post) {
       return res.status(404).json({
@@ -95,15 +88,8 @@ router.put("/:postId", async (req, res) => {
         message: "해당하는 글이 없습니다.",
       });
     }
-    if (!(await hashUtil.comparePassword(password, post.password))) {
-      return res.status(401).json({
-        success: false,
-        message: "패스워드가 일치하지 않습니다.",
-      });
-    }
     await post.update({
       title: title || post.title,
-      author: author || post.author,
       content: content,
     });
     await post.save();
@@ -132,14 +118,6 @@ router.post("/delete/:postId", async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "해당하는 글이 없습니다.",
-      });
-    }
-    const { password } = req.body;
-
-    if (!(await hashUtil.comparePassword(password, post.password))) {
-      return res.status(401).json({
-        success: false,
-        message: "패스워드가 일치하지 않습니다.",
       });
     }
     await post.destroy();

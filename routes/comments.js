@@ -35,10 +35,9 @@ router.get("/:postId", async (req, res) => {
 router.post("/:postId", async (req, res) => {
   try {
     const { postId } = req.params;
-    const { author, content } = req.body;
+    const { content } = req.body;
 
     db.Comment.create({
-      author,
       content,
       userId: 1,
       postId,
