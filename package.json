@@ -6,8 +6,10 @@
   "license": "MIT",
   "private": true,
   "scripts": {
+    "db:migrate": "sequelize db:migrate & sequelize db:seed:all",
+    "db:reset": "sequelize db:migrate:undo:all", 
     "start": "node app.js",
-    "start:dev": "nodemon --watch . app.js"
+    "start:dev": "yarn db:reset & yarn db:migrate & nodemon --watch . app.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.0",
