@@ -9,7 +9,9 @@ const authMiddleware = require("../middleware/auth-middleware");
  */
 router.get("/:postId", async (req, res) => {
   try {
-    const { postId } = req.params;
+    const { postId: _postId } = req.params;
+    const postId = +_postId;
+
     // TODO: 검증 로직
     const data = await db.Comment.findAll({
       attributes: {
@@ -44,7 +46,8 @@ router.get("/:postId", async (req, res) => {
 router.post("/:postId", authMiddleware, async (req, res) => {
   try {
     const { userId } = res.locals.user;
-    const { postId } = req.params;
+    const { postId: _postId } = req.params;
+    const postId = +_postId;
     const { content } = req.body;
 
     db.Comment.create({
@@ -69,7 +72,8 @@ router.post("/:postId", authMiddleware, async (req, res) => {
 router.put("/:commentId", authMiddleware, async (req, res) => {
   try {
     const { userId } = res.locals.user;
-    const { commentId } = req.params;
+    const { commentId: _commentId } = req.params;
+    const commentId = +_commentId;
     const { content } = req.body;
 
     const comment = await db.Comment.findByPk(commentId);
@@ -100,9 +104,10 @@ router.put("/:commentId", authMiddleware, async (req, res) => {
 router.delete("/:commentId", authMiddleware, async (req, res) => {
   try {
     const { userId } = res.locals.user;
-    const { commentId } = req.params;
+    const { commentId: _commentId } = req.params;
+    const commentId = +_commentId;
 
-    const comment = await db.Comment.findByPK(commentId);
+    const comment = await db.Comment.findByPk(commentId);
     if (!comment) {
       return res.status(404).json({
         success: false,

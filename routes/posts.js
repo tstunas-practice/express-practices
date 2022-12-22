@@ -3,14 +3,50 @@ const router = express.Router();
 const db = require("../models");
 const authMiddleware = require("../middleware/auth-middleware");
 
+router.get("/like", authMiddleware, async (req, res) => {
+  try {
+    const { userId } = res.locals.user;
+
+    const data = await db.Like.findAll({
+      raw: true,
+      attributes: [
+        "Post.postId",
+        "Post.User.nickname",
+        "Post.title",
+        "Post.content",
+        "Post.createdAt",
+        "Post.updatedAt",
+      ],
+      where: {
+        userId,
+      },
+      include: [
+        {
+          model: db.Post,
+          attributes: [],
+          include: [{ model: db.User, attributes: [], as: "User" }],
+          as: "Post",
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+    res.status(200).json({ data });
+  } catch (e) {
+    console.log(e);
+    return res
+      .status(400)
+      .json({ errorMessage: "좋아요 게시글 조회에 실패했습니다." });
+  }
+});
+
 /**
  * 게시글 조회 API
  * - 제목, 작성자명, 작성 내용을 조회하기
  */
 router.get("/:postId", async (req, res) => {
   try {
-    const { postId } = req.params;
-
+    const { postId: _postId } = req.params;
+    const postId = +_postId;
     const data = await db.Post.findOne({
       raw: true,
       attributes: {
@@ -28,44 +64,18 @@ router.get("/:postId", async (req, res) => {
         },
       ],
     });
+
+    const likeCount = await db.Like.count({
+      where: { postId },
+    });
+
+    data["likeCount"] = likeCount;
     res.status(200).json({ data });
   } catch (e) {
     console.log(e);
     return res
       .status(400)
       .json({ errorMessage: "게시글 조회에 실패했습니다." });
-  }
-});
-
-router.get("/like", authMiddleware, async (req, res) => {
-  try {
-    const { userId } = res.locals.user;
-
-    const data = await db.Like.findAll({
-      raw: true,
-      attributes: {
-        include: ["Post.*"],
-        exclude: ["userId"],
-      },
-      where: {
-        userId,
-      },
-      include: [
-        {
-          model: db.Post,
-          attributes: [],
-          include: [db.User],
-          as: "Post",
-        },
-      ],
-      order: [["createdAt", "DESC"]],
-    });
-    res.status(200).json({ data });
-  } catch (e) {
-    console.log(e);
-    return res
-      .status(400)
-      .json({ errorMessage: "좋아요 게시글 조회에 실패했습니다." });
   }
 });
 
@@ -139,7 +149,8 @@ router.post("/", authMiddleware, async (req, res) => {
 router.put("/:postId", authMiddleware, async (req, res) => {
   try {
     const { userId } = res.locals.user;
-    const { postId } = req.params;
+    const { postId: _postId } = req.params;
+    const postId = +_postId;
     const { title, content } = req.body;
 
     const post = await db.Post.findByPk(postId);
@@ -172,8 +183,8 @@ router.put("/:postId", authMiddleware, async (req, res) => {
 
 router.put("/:postId/like", authMiddleware, async (req, res) => {
   const { userId } = res.locals.user;
-  const { postId } = req.params;
-
+  const { postId: _postId } = req.params;
+  const postId = +_postId;
   try {
     const post = await db.Post.findByPk(postId);
     if (!post) {
@@ -181,27 +192,28 @@ router.put("/:postId/like", authMiddleware, async (req, res) => {
         errorMessage: "해당하는 글이 없습니다.",
       });
     }
-    const like = await db.Post.findOne({
+    const like = await db.Like.findOne({
       where: {
         userId,
         postId,
       },
     });
     if (like) {
-      await post.update({
-        likes: post.likes - 1,
-      });
-      await post.save();
       await like.destroy();
       await like.save();
-    } else {
-      post.update({
-        likes: post.likes + 1,
+
+      return res.status(200).json({
+        message: "좋아요를 취소했습니다.",
       });
+    } else {
       await post.save();
       await db.Like.create({
         userId,
         postId,
+      });
+
+      return res.status(201).json({
+        message: "좋아요를 눌렀습니다.",
       });
     }
   } catch (e) {
@@ -218,8 +230,8 @@ router.put("/:postId/like", authMiddleware, async (req, res) => {
 router.delete("/:postId", authMiddleware, async (req, res) => {
   try {
     const { userId } = res.locals.user;
-    const { postId } = req.params;
-
+    const { postId: _postId } = req.params;
+    const postId = +_postId;
     const post = await db.Post.findByPk(postId);
     if (!post) {
       return res.status(404).json({
