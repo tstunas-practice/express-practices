@@ -1,4 +1,7 @@
 "use strict";
+
+const { DataTypes } = require("sequelize");
+
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
@@ -10,26 +13,37 @@ module.exports = {
         type: Sequelize.INTEGER,
       },
       title: {
-        type: Sequelize.STRING,
+        allowNull: false,
+        type: DataTypes.STRING,
       },
       content: {
-        type: Sequelize.STRING,
+        allowNull: false,
+        type: DataTypes.STRING,
       },
       createdAt: {
+        allowNull: false,
+        defaultValue: new Date(),
         type: Sequelize.DATE,
       },
       updatedAt: {
+        allowNull: false,
+        defaultValue: new Date(),
         type: Sequelize.DATE,
       },
       likes: {
+        defaultValue: 0,
         type: Sequelize.INTEGER,
       },
       userId: {
-        type: Sequelize.BIGINT,
+        type: Sequelize.INTEGER,
+        references: {
+          model: "Users",
+          key: "userId",
+        },
       },
     });
   },
-  // eslint-disable-next-line no-unused-vars
+
   async down(queryInterface, Sequelize) {
     await queryInterface.dropTable("Posts");
   },

@@ -1,32 +1,48 @@
 "use strict";
+
+const { DataTypes } = require("sequelize");
+
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable("Comments", {
-      CommentId: {
+      commentId: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      userId: {
-        type: Sequelize.BIGINT,
-      },
       postId: {
-        type: Sequelize.BIGINT,
+        type: Sequelize.INTEGER,
+        references: {
+          model: "Posts",
+          key: "postId",
+        },
+      },
+      userId: {
+        type: Sequelize.INTEGER,
+        references: {
+          model: "Users",
+          key: "userId",
+        },
       },
       content: {
-        type: Sequelize.STRING,
+        allowNull: false,
+        type: DataTypes.STRING,
       },
       createdAt: {
+        allowNull: false,
+        defaultValue: new Date(),
         type: Sequelize.DATE,
       },
       updatedAt: {
+        allowNull: false,
+        defaultValue: new Date(),
         type: Sequelize.DATE,
       },
     });
   },
-  // eslint-disable-next-line no-unused-vars
+
   async down(queryInterface, Sequelize) {
     await queryInterface.dropTable("Comments");
   },

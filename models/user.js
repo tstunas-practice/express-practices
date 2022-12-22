@@ -16,9 +16,10 @@ module.exports = (sequelize, DataTypes) => {
         autoIncrement: true,
         type: DataTypes.INTEGER,
       },
-      email: DataTypes.STRING,
       nickname: DataTypes.STRING,
       password: DataTypes.STRING,
+      createdAt: DataTypes.DATE,
+      updatedAt: DataTypes.DATE,
     },
     {
       sequelize,

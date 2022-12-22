@@ -1,4 +1,5 @@
 "use strict";
+
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
@@ -17,15 +18,17 @@ module.exports = {
       },
       createdAt: {
         allowNull: false,
+        defaultValue: new Date(),
         type: Sequelize.DATE,
       },
       updatedAt: {
         allowNull: false,
+        defaultValue: new Date(),
         type: Sequelize.DATE,
       },
     });
   },
-  // eslint-disable-next-line no-unused-vars
+
   async down(queryInterface, Sequelize) {
     await queryInterface.dropTable("Users");
   },
